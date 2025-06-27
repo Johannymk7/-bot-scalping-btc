@@ -4,9 +4,9 @@ import os
 
 app = Flask(__name__)
 
-# Claves de Binance Testnet desde las variables de entorno (seguras)
-API_KEY = os.getenv("BINANCE_API_KEY", "TU_API_KEY")
-API_SECRET = os.getenv("BINANCE_API_SECRET", "TU_API_SECRET")
+# Claves desde entorno seguro (Render Settings > Environment)
+API_KEY = os.getenv("BINANCE_API_KEY")
+API_SECRET = os.getenv("BINANCE_API_SECRET")
 client = Client(API_KEY, API_SECRET)
 
 @app.route('/')
@@ -15,18 +15,20 @@ def home():
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    data = request.get_json()
-    print("📩 Alerta recibida:", data)  # Para ver la alerta en logs de Render
-
-    # Respuesta rápida a TradingView
-    if not data or 'action' not in data or 'symbol' not in data:
-        return jsonify({'error': 'Datos inválidos'}), 400
-
-    symbol = data['symbol']
-    action = data['action'].lower()
-    quantity = data.get('quantity', 0.001)
-
     try:
+        data = request.get_json()
+        print("📩 Alerta recibida:", data)
+
+        if not data or 'action' not in data or 'symbol' not in data:
+            print("❌ Datos inválidos:", data)
+            return jsonify({'error': 'Datos inválidos'}), 400
+
+        symbol = data['symbol']
+        action = data['action'].lower()
+        quantity = data.get('quantity', 0.001)
+
+        print(f"🚀 Ejecutando orden: {action.upper()} {symbol} - cantidad: {quantity}")
+
         if action == 'buy':
             order = client.create_order(
                 symbol=symbol,
@@ -42,12 +44,14 @@ def webhook():
                 quantity=quantity
             )
         else:
+            print("❌ Acción no soportada:", action)
             return jsonify({'error': 'Acción no soportada'}), 400
 
+        print("✅ Orden ejecutada:", order)
         return jsonify({'message': '✅ Orden ejecutada', 'order': order})
 
     except Exception as e:
-        print("❌ Error:", e)
+        print("❌ Error crítico:", str(e))
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
