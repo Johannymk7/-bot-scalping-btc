@@ -4,13 +4,17 @@ import os
 
 app = Flask(__name__)
 
-# Leer claves API desde variables de entorno (Render > Environment)
+# Leer claves API desde variables de entorno (en Render > Environment)
 API_KEY = os.getenv("BINANCE_API_KEY")
 API_SECRET = os.getenv("BINANCE_API_SECRET")
 
-# Configurar cliente Binance con la red de prueba (Testnet)
+# Validación básica por si están vacías
+if not API_KEY or not API_SECRET:
+    raise ValueError("❌ Las claves de API no están definidas. Verifica las variables de entorno.")
+
+# Conexión a la Testnet de Binance
 client = Client(API_KEY, API_SECRET)
-client.API_URL = 'https://testnet.binance.vision'
+client.API_URL = 'https://testnet.binance.vision/api'  # importante usar /api al final
 
 @app.route('/')
 def home():
@@ -20,26 +24,25 @@ def home():
 def webhook():
     try:
         data = request.get_json()
-        print("📩 Alerta recibida:", data)
 
-        if not data or 'action' not in data or 'symbol' not in data:
-            print("❌ Datos incompletos o malformateados:", data)
-            return jsonify({'error': 'Datos inválidos'}), 400
+        if not data:
+            return jsonify({'error': '⚠️ JSON vacío o mal formado'}), 400
 
-        symbol = data['symbol']
-        action = data['action'].lower()
-        quantity = data.get('quantity', 0.001)
+        action = data.get('action')
+        symbol = data.get('symbol')
+        quantity = float(data.get('quantity', 0.001))
 
-        print(f"🚀 Ejecutando orden: {action.upper()} {symbol} - cantidad: {quantity}")
+        if not action or not symbol:
+            return jsonify({'error': '⚠️ Faltan campos necesarios'}), 400
 
-        if action == 'buy':
+        if action.lower() == 'buy':
             order = client.create_order(
                 symbol=symbol,
                 side=Client.SIDE_BUY,
                 type=Client.ORDER_TYPE_MARKET,
                 quantity=quantity
             )
-        elif action == 'sell':
+        elif action.lower() == 'sell':
             order = client.create_order(
                 symbol=symbol,
                 side=Client.SIDE_SELL,
@@ -47,14 +50,12 @@ def webhook():
                 quantity=quantity
             )
         else:
-            print("❌ Acción no reconocida:", action)
-            return jsonify({'error': 'Acción no válida'}), 400
+            return jsonify({'error': '⚠️ Acción no reconocida'}), 400
 
-        print("✅ Orden ejecutada con éxito:", order)
-        return jsonify({'message': '✅ Orden ejecutada', 'order': order})
+        return jsonify({'message': '✅ Orden ejecutada', 'order': order}), 200
 
     except Exception as e:
-        print("❌ Error durante la ejecución:", str(e))
+        print("❌ Error:", str(e))
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
