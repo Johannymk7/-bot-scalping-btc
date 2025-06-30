@@ -4,10 +4,13 @@ import os
 
 app = Flask(__name__)
 
-# Claves desde entorno seguro (Render Settings > Environment)
+# Claves desde entorno seguro
 API_KEY = os.getenv("BINANCE_API_KEY")
 API_SECRET = os.getenv("BINANCE_API_SECRET")
 client = Client(API_KEY, API_SECRET)
+
+# Conectar a Binance Testnet
+client.API_URL = 'https://testnet.binance.vision'
 
 @app.route('/')
 def home():
@@ -53,6 +56,3 @@ def webhook():
     except Exception as e:
         print("❌ Error crítico:", str(e))
         return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
