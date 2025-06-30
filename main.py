@@ -4,12 +4,12 @@ import os
 
 app = Flask(__name__)
 
-# Claves desde entorno seguro (Render Settings > Environment)
+# Claves desde entorno seguro (Render > Environment)
 API_KEY = os.getenv("BINANCE_API_KEY")
 API_SECRET = os.getenv("BINANCE_API_SECRET")
-client = Client(API_KEY, API_SECRET)
 
-# Conectar a Binance Testnet
+# Crear cliente Binance y apuntar a la red de pruebas
+client = Client(API_KEY, API_SECRET)
 client.API_URL = 'https://testnet.binance.vision'
 
 @app.route('/')
@@ -22,6 +22,7 @@ def webhook():
         data = request.get_json()
         print("📩 Alerta recibida:", data)
 
+        # Validar datos recibidos
         if not data or 'action' not in data or 'symbol' not in data:
             print("❌ Datos inválidos:", data)
             return jsonify({'error': 'Datos inválidos'}), 400
@@ -32,6 +33,7 @@ def webhook():
 
         print(f"🚀 Ejecutando orden: {action.upper()} {symbol} - cantidad: {quantity}")
 
+        # Ejecutar orden según acción
         if action == 'buy':
             order = client.create_order(
                 symbol=symbol,
@@ -57,7 +59,6 @@ def webhook():
         print("❌ Error crítico:", str(e))
         return jsonify({'error': str(e)}), 500
 
-# Esta parte es clave para que Render detecte correctamente el puerto
+# Ejecutar app si se corre localmente (opcional)
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=False, port=10000)
