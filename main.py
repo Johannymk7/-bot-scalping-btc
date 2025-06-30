@@ -4,11 +4,11 @@ import os
 
 app = Flask(__name__)
 
-# Claves desde entorno seguro (Render > Environment)
+# Leer claves API desde variables de entorno (Render > Environment)
 API_KEY = os.getenv("BINANCE_API_KEY")
 API_SECRET = os.getenv("BINANCE_API_SECRET")
 
-# Crear cliente Binance y apuntar a la red de pruebas
+# Configurar cliente Binance con la red de prueba (Testnet)
 client = Client(API_KEY, API_SECRET)
 client.API_URL = 'https://testnet.binance.vision'
 
@@ -22,9 +22,8 @@ def webhook():
         data = request.get_json()
         print("📩 Alerta recibida:", data)
 
-        # Validar datos recibidos
         if not data or 'action' not in data or 'symbol' not in data:
-            print("❌ Datos inválidos:", data)
+            print("❌ Datos incompletos o malformateados:", data)
             return jsonify({'error': 'Datos inválidos'}), 400
 
         symbol = data['symbol']
@@ -33,7 +32,6 @@ def webhook():
 
         print(f"🚀 Ejecutando orden: {action.upper()} {symbol} - cantidad: {quantity}")
 
-        # Ejecutar orden según acción
         if action == 'buy':
             order = client.create_order(
                 symbol=symbol,
@@ -49,16 +47,15 @@ def webhook():
                 quantity=quantity
             )
         else:
-            print("❌ Acción no soportada:", action)
-            return jsonify({'error': 'Acción no soportada'}), 400
+            print("❌ Acción no reconocida:", action)
+            return jsonify({'error': 'Acción no válida'}), 400
 
-        print("✅ Orden ejecutada:", order)
+        print("✅ Orden ejecutada con éxito:", order)
         return jsonify({'message': '✅ Orden ejecutada', 'order': order})
 
     except Exception as e:
-        print("❌ Error crítico:", str(e))
+        print("❌ Error durante la ejecución:", str(e))
         return jsonify({'error': str(e)}), 500
 
-# Ejecutar app si se corre localmente (opcional)
 if __name__ == '__main__':
-    app.run(debug=False, port=10000)
+    app.run(host='0.0.0.0', port=10000)
